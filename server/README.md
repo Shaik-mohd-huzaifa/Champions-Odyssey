@@ -116,7 +116,7 @@ The agent uses a **dynamically generated system prompt** that includes:
 - Guidelines for intelligent decision-making
 - The LLM sees the exact same tool descriptions that are defined in the code
 
-This ensures the agent always has up-to-date information about available tools and their capabilities. You can view the complete prompt at `GET /api/agent/system-prompt`.
+This ensures the agent always has up-to-date information about available tools and their capabilities. All prompt management is handled internally by the server.
 
 ## API Documentation
 
@@ -186,38 +186,7 @@ Once the server is running, you can access:
   ```
 - Response streams text including tool usage notifications like `[Using tool: calculator]`
 
-#### Get Available Models
-- `GET /api/agent/models`
-- Get list of available models and current model configuration
-
-#### Get Available Tools
-- `GET /api/agent/tools`
-- Get list of all tools the agent can use with their descriptions
-- Response:
-  ```json
-  {
-    "tools": [
-      {
-        "name": "calculator",
-        "description": "Performs mathematical calculations..."
-      }
-    ],
-    "count": 5
-  }
-  ```
-
-#### Get Agent System Prompt
-- `GET /api/agent/system-prompt`
-- View the complete system prompt that the agent sees
-- Shows all tool descriptions and instructions dynamically included
-- Response:
-  ```json
-  {
-    "system_prompt": "You are an intelligent AI agent...\n\n### calculator\nPerforms mathematical calculations...",
-    "includes_tools": true,
-    "tool_count": 5
-  }
-  ```
+**Note:** All agent operations (tool selection, system prompts, model management) are handled internally by the server. The client only needs to send queries and receive responses.
 
 ## Example Usage
 
@@ -257,11 +226,6 @@ curl -X POST "http://localhost:8000/api/agent/conversation" \
   }'
 ```
 
-**Get available tools:**
-```bash
-curl http://localhost:8000/api/agent/tools
-```
-
 ### Using Python Requests
 
 ```python
@@ -299,21 +263,18 @@ response = requests.post(
 )
 print(response.json())
 
-# Get available tools
-tools = requests.get("http://localhost:8000/api/agent/tools")
-print(f"Available tools: {tools.json()['count']}")
-for tool in tools.json()['tools']:
-    print(f"  - {tool['name']}: {tool['description'][:50]}...")
-
-# Get available models
-models = requests.get("http://localhost:8000/api/agent/models")
-print(models.json())
-
-# View the system prompt (see what the agent sees)
-prompt = requests.get("http://localhost:8000/api/agent/system-prompt")
-print("System Prompt Preview:")
-print(prompt.json()['system_prompt'][:500] + "...")
-print(f"\nIncludes {prompt.json()['tool_count']} tools with full descriptions")
+# Example 5: Multi-turn conversation with context
+response = requests.post(
+    "http://localhost:8000/api/agent/conversation",
+    json={
+        "messages": [
+            {"role": "user", "content": "Remember that my name is Alice"},
+            {"role": "assistant", "content": "Got it! I'll remember that your name is Alice."},
+            {"role": "user", "content": "What's my name?"}
+        ]
+    }
+)
+print(response.json())
 ```
 
 ### Agent Execution Flow Examples
