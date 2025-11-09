@@ -58,9 +58,9 @@ async def hello():
     return {"message": "Hello from FastAPI!"}
 
 
-# Bedrock AI endpoints
-@app.post("/api/bedrock/chat", response_model=ChatResponse)
-async def chat_with_bedrock(request: ChatRequest):
+# Agent AI endpoints
+@app.post("/api/agent/chat", response_model=ChatResponse)
+async def chat_with_agent(request: ChatRequest):
     """
     Send a single message to AWS Bedrock and get a response
 
@@ -83,8 +83,8 @@ async def chat_with_bedrock(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"Bedrock error: {str(e)}")
 
 
-@app.post("/api/bedrock/conversation", response_model=ChatResponse)
-async def conversation_with_bedrock(request: ConversationRequest):
+@app.post("/api/agent/conversation", response_model=ChatResponse)
+async def conversation_with_agent(request: ConversationRequest):
     """
     Handle multi-turn conversation with AWS Bedrock
 
@@ -108,8 +108,8 @@ async def conversation_with_bedrock(request: ConversationRequest):
         raise HTTPException(status_code=500, detail=f"Bedrock error: {str(e)}")
 
 
-@app.post("/api/bedrock/stream")
-async def stream_chat_with_bedrock(request: ChatRequest):
+@app.post("/api/agent/stream")
+async def stream_chat_with_agent(request: ChatRequest):
     """
     Stream responses from AWS Bedrock
 
@@ -132,8 +132,8 @@ async def stream_chat_with_bedrock(request: ChatRequest):
     return StreamingResponse(generate(), media_type="text/plain")
 
 
-@app.get("/api/bedrock/models")
-async def get_bedrock_models():
+@app.get("/api/agent/models")
+async def get_agent_models():
     """
     Get list of available Bedrock models
 

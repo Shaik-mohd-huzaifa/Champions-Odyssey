@@ -86,10 +86,10 @@ Once the server is running, you can access:
 - `GET /health` - Health check endpoint
 - `GET /api/hello` - Sample API endpoint
 
-### AWS Bedrock AI Endpoints
+### AI Agent Endpoints
 
-#### Chat with Bedrock (Single Message)
-- `POST /api/bedrock/chat`
+#### Chat with Agent (Single Message)
+- `POST /api/agent/chat`
 - Send a single message and get an AI response
 - Request body:
   ```json
@@ -100,7 +100,7 @@ Once the server is running, you can access:
   ```
 
 #### Multi-turn Conversation
-- `POST /api/bedrock/conversation`
+- `POST /api/agent/conversation`
 - Handle multi-turn conversations with context
 - Request body:
   ```json
@@ -115,8 +115,8 @@ Once the server is running, you can access:
   ```
 
 #### Streaming Response
-- `POST /api/bedrock/stream`
-- Get streaming responses from Bedrock
+- `POST /api/agent/stream`
+- Get streaming responses from the agent
 - Request body:
   ```json
   {
@@ -126,8 +126,8 @@ Once the server is running, you can access:
   ```
 
 #### Get Available Models
-- `GET /api/bedrock/models`
-- Get list of available Bedrock models and current model configuration
+- `GET /api/agent/models`
+- Get list of available models and current model configuration
 
 ## Example Usage
 
@@ -135,14 +135,14 @@ Once the server is running, you can access:
 
 **Simple chat:**
 ```bash
-curl -X POST "http://localhost:8000/api/bedrock/chat" \
+curl -X POST "http://localhost:8000/api/agent/chat" \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello, how are you?"}'
 ```
 
 **Conversation with context:**
 ```bash
-curl -X POST "http://localhost:8000/api/bedrock/conversation" \
+curl -X POST "http://localhost:8000/api/agent/conversation" \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [
@@ -160,7 +160,7 @@ import requests
 
 # Simple chat
 response = requests.post(
-    "http://localhost:8000/api/bedrock/chat",
+    "http://localhost:8000/api/agent/chat",
     json={
         "message": "Explain quantum computing in simple terms",
         "system_prompt": "You are a physics teacher."
@@ -169,7 +169,7 @@ response = requests.post(
 print(response.json())
 
 # Get available models
-models = requests.get("http://localhost:8000/api/bedrock/models")
+models = requests.get("http://localhost:8000/api/agent/models")
 print(models.json())
 ```
 
