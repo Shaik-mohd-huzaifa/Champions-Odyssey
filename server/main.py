@@ -2,9 +2,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from config import settings
 from bedrock_service import bedrock_service
+from agent_service import agent_service
 
 app = FastAPI(
     title="Champions Odyssey API",
@@ -42,6 +43,13 @@ class ChatResponse(BaseModel):
     response: str
     model: str
 
+
+class AgentResponse(BaseModel):
+    response: str
+    model: str
+    tools_used: List[Dict[str, Any]]
+    used_tools: bool
+
 @app.get("/")
 async def root():
     """Root endpoint"""
@@ -58,73 +66,99 @@ async def hello():
     return {"message": "Hello from FastAPI!"}
 
 
-# Agent AI endpoints
-@app.post("/api/agent/chat", response_model=ChatResponse)
+# Agent AI endpoints with tool calling
+@app.post("/api/agent/chat", response_model=AgentResponse)
 async def chat_with_agent(request: ChatRequest):
     """
-    Send a single message to AWS Bedrock and get a response
+    Send a single message to the AI agent which can use tools to answer
+
+    The agent will analyze the query and determine if it needs to use any tools
+    (calculator, datetime, text analyzer, etc.) or can answer directly.
 
     Args:
-        request: ChatRequest with message and optional system prompt
+        request: ChatRequest with message
 
     Returns:
-        ChatResponse with the AI-generated response
+        AgentResponse with the AI-generated response and tool usage information
+
+    Example:
+        Input: {"message": "What is 123 * 456?"}
+        Output: {
+            "response": "The result is 56,088",
+            "tools_used": [{"tool": "calculator", "input": "123 * 456", "output": "56088"}],
+            "used_tools": true,
+            "model": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+        }
     """
     try:
-        response = await bedrock_service.generate_response(
-            message=request.message,
-            system_prompt=request.system_prompt
-        )
-        return ChatResponse(
-            response=response,
-            model=settings.bedrock_model_id
-        )
+        result = await agent_service.process_query(query=request.message)
+        return AgentResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Bedrock error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
-@app.post("/api/agent/conversation", response_model=ChatResponse)
+@app.post("/api/agent/conversation", response_model=AgentResponse)
 async def conversation_with_agent(request: ConversationRequest):
     """
-    Handle multi-turn conversation with AWS Bedrock
+    Handle multi-turn conversation with the AI agent
+
+    The agent maintains context across the conversation and can use tools
+    as needed based on the conversation flow.
 
     Args:
-        request: ConversationRequest with message history and optional system prompt
+        request: ConversationRequest with message history
 
     Returns:
-        ChatResponse with the AI-generated response
+        AgentResponse with the AI-generated response and tool usage information
+
+    Example:
+        Input: {
+            "messages": [
+                {"role": "user", "content": "My favorite number is 7"},
+                {"role": "assistant", "content": "That's a great number!"},
+                {"role": "user", "content": "Multiply it by 8"}
+            ]
+        }
+        Output: {
+            "response": "7 multiplied by 8 equals 56",
+            "tools_used": [{"tool": "calculator", "input": "7 * 8", "output": "56"}],
+            "used_tools": true,
+            "model": "..."
+        }
     """
     try:
         messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
-        response = await bedrock_service.chat(
-            messages=messages,
-            system_prompt=request.system_prompt
-        )
-        return ChatResponse(
-            response=response,
-            model=settings.bedrock_model_id
-        )
+        # Use the last message as the query and the rest as history
+        if len(messages) > 0:
+            current_query = messages[-1]["content"]
+            history = messages[:-1] if len(messages) > 1 else None
+            result = await agent_service.process_query(
+                query=current_query,
+                chat_history=history
+            )
+            return AgentResponse(**result)
+        else:
+            raise HTTPException(status_code=400, detail="No messages provided")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Bedrock error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
 @app.post("/api/agent/stream")
 async def stream_chat_with_agent(request: ChatRequest):
     """
-    Stream responses from AWS Bedrock
+    Stream responses from the AI agent
+
+    The agent's response and tool usage will be streamed in real-time.
 
     Args:
-        request: ChatRequest with message and optional system prompt
+        request: ChatRequest with message
 
     Returns:
-        StreamingResponse with AI-generated content
+        StreamingResponse with AI-generated content and tool usage indicators
     """
     async def generate():
         try:
-            async for chunk in bedrock_service.stream_response(
-                message=request.message,
-                system_prompt=request.system_prompt
-            ):
+            async for chunk in agent_service.stream_query(query=request.message):
                 yield chunk
         except Exception as e:
             yield f"Error: {str(e)}"
@@ -138,7 +172,7 @@ async def get_agent_models():
     Get list of available Bedrock models
 
     Returns:
-        List of available model IDs
+        List of available model IDs and current configuration
     """
     try:
         models = bedrock_service.get_available_models()
@@ -148,6 +182,39 @@ async def get_agent_models():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching models: {str(e)}")
+
+
+@app.get("/api/agent/tools")
+async def get_agent_tools():
+    """
+    Get list of available tools the agent can use
+
+    Returns:
+        List of tools with their names and descriptions
+
+    Example response:
+        {
+            "tools": [
+                {
+                    "name": "calculator",
+                    "description": "Performs mathematical calculations..."
+                },
+                {
+                    "name": "get_current_datetime",
+                    "description": "Returns the current date and time..."
+                }
+            ],
+            "count": 5
+        }
+    """
+    try:
+        tools = agent_service.get_available_tools()
+        return {
+            "tools": tools,
+            "count": len(tools)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching tools: {str(e)}")
 
 
 if __name__ == "__main__":
