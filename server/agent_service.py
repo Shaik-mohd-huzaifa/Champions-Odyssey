@@ -8,8 +8,27 @@ from config import settings
 from tools import ALL_TOOLS
 
 
-# Comprehensive system prompt for the agent
-AGENT_SYSTEM_PROMPT = """You are an intelligent AI agent for Champions Odyssey, a full-stack application with AI capabilities.
+def create_agent_system_prompt(tools: List) -> str:
+    """
+    Dynamically create the system prompt with detailed tool descriptions
+
+    Args:
+        tools: List of LangChain tools available to the agent
+
+    Returns:
+        Complete system prompt with tool descriptions
+    """
+    # Build tool descriptions section
+    tool_descriptions = []
+    for tool in tools:
+        tool_name = tool.name
+        tool_desc = tool.description
+        tool_descriptions.append(f"""### {tool_name}
+{tool_desc}""")
+
+    tools_section = "\n\n".join(tool_descriptions)
+
+    prompt = f"""You are an intelligent AI agent for Champions Odyssey, a full-stack application with AI capabilities.
 
 Your primary goal is to help users by:
 1. Analyzing their questions and determining the best approach to answer them
@@ -18,13 +37,10 @@ Your primary goal is to help users by:
 4. Being conversational, helpful, and informative
 
 ## Available Tools
-You have access to several tools that help you answer specific types of questions:
 
-- **calculator**: For mathematical calculations and expressions
-- **get_current_datetime**: For current date, time, and temporal information
-- **text_analyzer**: For analyzing text statistics (word count, character count, etc.)
-- **champions_knowledge_base**: For information about the Champions Odyssey project
-- **string_operations**: For text manipulation (uppercase, lowercase, reverse, etc.)
+You have access to the following tools. Each tool has specific capabilities - read their descriptions carefully to understand when to use them:
+
+{tools_section}
 
 ## Decision Making Process
 
@@ -32,35 +48,38 @@ You have access to several tools that help you answer specific types of question
 2. **Determine if tools are needed**:
    - Use tools for: calculations, current time/date, text analysis, string operations, project info
    - Answer directly for: general knowledge, advice, explanations, conversations
-3. **Select the right tool**: Choose the most appropriate tool for the task
+3. **Select the right tool**: Choose the most appropriate tool for the task based on the descriptions above
 4. **Execute and respond**: Use the tool result to formulate a helpful response
 
 ## Guidelines
 
 - **Be efficient**: Only use tools when necessary
-- **Be accurate**: Use tools for factual, real-time data
+- **Be accurate**: Use tools for factual, real-time data (calculations, current time, etc.)
 - **Be conversational**: Maintain a friendly, helpful tone
-- **Be clear**: Explain your reasoning when using tools
+- **Be clear**: Explain your reasoning when appropriate
 - **Chain tools if needed**: You can use multiple tools for complex queries
+- **Read tool descriptions**: The tool descriptions above tell you exactly what each tool does and when to use it
 
 ## Examples
 
 **Query**: "What is 1234 * 5678?"
-**Action**: Use calculator tool -> "The result is 7,006,652"
+**Action**: Use calculator tool → "The result is 7,006,652"
 
 **Query**: "What time is it?"
-**Action**: Use get_current_datetime tool -> "It's currently November 9, 2025 at 5:30 PM"
+**Action**: Use get_current_datetime tool → "It's currently November 9, 2025 at 5:30 PM"
 
 **Query**: "What is the capital of France?"
-**Action**: Answer directly -> "The capital of France is Paris"
+**Action**: Answer directly → "The capital of France is Paris"
 
 **Query**: "Analyze this text: 'Hello world!'"
-**Action**: Use text_analyzer tool -> Provide analysis results
+**Action**: Use text_analyzer tool → Provide analysis results
 
 **Query**: "What can this application do?"
-**Action**: Use champions_knowledge_base tool -> Explain features
+**Action**: Use champions_knowledge_base tool → Explain features
 
-Remember: Your goal is to be helpful, accurate, and efficient. Use tools when they add value, but don't over-complicate simple questions."""
+Remember: Your goal is to be helpful, accurate, and efficient. Use tools when they add value, but don't over-complicate simple questions. The tool descriptions above are your guide for when and how to use each tool."""
+
+    return prompt
 
 
 class AgentService:
@@ -98,10 +117,13 @@ class AgentService:
         )
 
     def _create_agent(self) -> AgentExecutor:
-        """Create the agent executor with tools and prompt"""
+        """Create the agent executor with tools and dynamic prompt"""
+        # Generate system prompt with tool descriptions
+        system_prompt = create_agent_system_prompt(self.tools)
+
         # Create the prompt template
         prompt = ChatPromptTemplate.from_messages([
-            ("system", AGENT_SYSTEM_PROMPT),
+            ("system", system_prompt),
             MessagesPlaceholder(variable_name="chat_history", optional=True),
             ("human", "{input}"),
             MessagesPlaceholder(variable_name="agent_scratchpad"),
@@ -245,6 +267,15 @@ class AgentService:
                 "description": tool.description,
             })
         return tools_info
+
+    def get_system_prompt(self) -> str:
+        """
+        Get the current system prompt being used by the agent
+
+        Returns:
+            The complete system prompt with all tool descriptions
+        """
+        return create_agent_system_prompt(self.tools)
 
 
 # Global instance

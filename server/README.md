@@ -108,6 +108,16 @@ The agent has access to these tools:
 - **Answers directly for**: General knowledge, explanations, conversations, advice
 - **Can chain tools**: Multiple tools for complex queries
 
+### Dynamic System Prompt
+
+The agent uses a **dynamically generated system prompt** that includes:
+- Complete tool descriptions from each tool's docstring
+- Examples of when to use each tool
+- Guidelines for intelligent decision-making
+- The LLM sees the exact same tool descriptions that are defined in the code
+
+This ensures the agent always has up-to-date information about available tools and their capabilities. You can view the complete prompt at `GET /api/agent/system-prompt`.
+
 ## API Documentation
 
 Once the server is running, you can access:
@@ -193,6 +203,19 @@ Once the server is running, you can access:
       }
     ],
     "count": 5
+  }
+  ```
+
+#### Get Agent System Prompt
+- `GET /api/agent/system-prompt`
+- View the complete system prompt that the agent sees
+- Shows all tool descriptions and instructions dynamically included
+- Response:
+  ```json
+  {
+    "system_prompt": "You are an intelligent AI agent...\n\n### calculator\nPerforms mathematical calculations...",
+    "includes_tools": true,
+    "tool_count": 5
   }
   ```
 
@@ -285,6 +308,12 @@ for tool in tools.json()['tools']:
 # Get available models
 models = requests.get("http://localhost:8000/api/agent/models")
 print(models.json())
+
+# View the system prompt (see what the agent sees)
+prompt = requests.get("http://localhost:8000/api/agent/system-prompt")
+print("System Prompt Preview:")
+print(prompt.json()['system_prompt'][:500] + "...")
+print(f"\nIncludes {prompt.json()['tool_count']} tools with full descriptions")
 ```
 
 ### Agent Execution Flow Examples

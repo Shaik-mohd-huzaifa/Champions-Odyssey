@@ -217,6 +217,36 @@ async def get_agent_tools():
         raise HTTPException(status_code=500, detail=f"Error fetching tools: {str(e)}")
 
 
+@app.get("/api/agent/system-prompt")
+async def get_agent_system_prompt():
+    """
+    Get the complete system prompt used by the agent
+
+    This shows exactly what instructions and tool descriptions the agent sees,
+    including all available tools and their detailed descriptions.
+
+    Returns:
+        The system prompt text
+
+    Example response:
+        {
+            "system_prompt": "You are an intelligent AI agent...",
+            "includes_tools": true,
+            "tool_count": 5
+        }
+    """
+    try:
+        system_prompt = agent_service.get_system_prompt()
+        tools = agent_service.get_available_tools()
+        return {
+            "system_prompt": system_prompt,
+            "includes_tools": True,
+            "tool_count": len(tools)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching system prompt: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
